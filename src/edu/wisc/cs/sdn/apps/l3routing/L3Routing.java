@@ -72,6 +72,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
         this.deviceProv = context.getServiceImpl(IDeviceService.class);
         
         this.knownHosts = new ConcurrentHashMap<IDevice,Host>();
+        this.bestPaths = new ConcurrentHashMap<SwitchPairs, Link>();
 	}
 
 	/**
