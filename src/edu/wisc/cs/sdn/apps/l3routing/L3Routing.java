@@ -266,7 +266,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 						System.out.println("Link is null");
 						continue;
 					}
-					int port = link.getDstPort();
+					int port = link.getSrcPort();
 					this.installRule(s1, h2, port);
 					s1 = switches.get(link.getDst());
 				}
@@ -291,7 +291,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 					System.out.println("Link is null");
 					continue;
 				}
-				int port = link.getDstPort();
+				int port = link.getSrcPort();
 				this.installRule(s1, h2, port);
 				s1 = switches.get(link.getDst());
 			}
