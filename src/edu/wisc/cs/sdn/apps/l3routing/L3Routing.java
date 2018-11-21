@@ -54,7 +54,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
     private Map<IDevice,Host> knownHosts;
 
     // Map of (h1, h2) to link
-    private Map<SwitchPairs, Link> bestPaths;
+    private Map<Long, Map<Long, Link>> bestPaths;
 
 	/**
      * Loads dependencies and initializes data structures.
@@ -72,7 +72,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
         this.deviceProv = context.getServiceImpl(IDeviceService.class);
         
         this.knownHosts = new ConcurrentHashMap<IDevice,Host>();
-        this.bestPaths = new ConcurrentHashMap<SwitchPairs, Link>();
+        this.bestPaths = new ConcurrentHashMap<Long, Map<Long, Link>>();
 	}
 
 	/**
@@ -260,8 +260,11 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				IOFSwitch s1 = h1.getSwitch();
 				IOFSwitch s2 = h2.getSwitch();
 				while (!s1.equals(s2)) {
-					Link link = this.bestPaths.get(new SwitchPairs(s1.getId(), s2.getId()));
-					if (null == link) System.out.println("Link is null");
+					Link link = this.bestPaths.get(s1.getId()).get(s2.getId());
+					if (null == link) {
+						System.out.println("Link is null");
+						continue;
+					}
 					int port = link.getDstPort();
 					this.installRule(s1, h2, port);
 					s1 = switches.get(link.getDst());
@@ -280,8 +283,11 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			IOFSwitch s1 = h1.getSwitch();
 			IOFSwitch s2 = h2.getSwitch();
 			while (!s1.equals(s2)) {
-				Link link = this.bestPaths.get(new SwitchPairs(s1.getId(), s2.getId()));
-				if (null == link) System.out.println("Link is null");
+				Link link = this.bestPaths.get(s1.getId()).get(s2.getId());
+				if (null == link){
+					System.out.println("Link is null");
+					continue;
+				}
 				int port = link.getDstPort();
 				this.installRule(s1, h2, port);
 				s1 = switches.get(link.getDst());
@@ -322,31 +328,37 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/** Update bestRoutes and bestPaths
 	 *  using Floyd-Warshall algorithm */
 	private void updateShortestPath(){
-		Map<SwitchPairs, Integer> bestRoutes = new ConcurrentHashMap<SwitchPairs, Integer>();
-		Map<SwitchPairs, Link> bestPaths = new ConcurrentHashMap<SwitchPairs, Link>();
+		Map<Long, Map<Long, Integer>> bestRoutes = new ConcurrentHashMap<Long, Map<Long, Integer>>();
+		Map<Long, Map<Long, Link>> bestPaths = new ConcurrentHashMap<Long, Map<Long, Link>>();
 		Set<Long> switches = this.getSwitches().keySet();
 		for (Long i : switches){
+			Map<Long, Link> linkMap = new ConcurrentHashMap<Long, Link>();
+			Map<Long, Integer> distMap = new ConcurrentHashMap<Long, Integer>();
 			for (Long j : switches){
-				bestRoutes.put(new SwitchPairs(i, j), Integer.MAX_VALUE);
+				if (i.equals(j)){
+					distMap.put(j, 0);
+				} else {
+					distMap.put(j, Integer.MAX_VALUE);
+				}
 			}
+			bestRoutes.put(i, distMap);
+			bestPaths.put(i, linkMap);
 		}
 		for (Link link : this.getLinks()){
-			bestRoutes.put(new SwitchPairs(link.getSrc(), link.getDst()), 1);
-			bestRoutes.put(new SwitchPairs(link.getDst(), link.getSrc()), 1);
-			bestPaths.put(new SwitchPairs(link.getSrc(), link.getDst()), link);
-			bestPaths.put(new SwitchPairs(link.getDst(), link.getSrc()), link);
-		}
-		for (Long s : switches){
-			bestRoutes.put(new SwitchPairs(s, s), 0);
+			Long src = link.getSrc();
+			Long dst = link.getDst();
+			bestRoutes.get(src).put(dst, 1);
+			bestRoutes.get(dst).put(src, 1);
+			bestPaths.get(src).put(dst, link);
+			bestPaths.get(dst).put(src, link);
 		}
 
 		for (Long k : switches){
 			for (Long i : switches){
 				for (Long j : switches){
-					SwitchPairs ij = new SwitchPairs(i, j), ik = new SwitchPairs(i, k), kj = new SwitchPairs(k, j);
-					if (bestRoutes.get(ij) > bestRoutes.get(ik) + bestRoutes.get(kj)){
-						bestRoutes.put(ij, bestRoutes.get(ik) + bestRoutes.get(kj));
-						bestPaths.put(ij, bestPaths.get(ik));
+					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
+						bestRoutes.get(i).put(j, bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j));
+						bestPaths.get(i).put(j, bestPaths.get(i).get(k));
 					}
 				}
 			}
@@ -459,15 +471,4 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
         floodlightService.add(IDeviceService.class);
         return floodlightService;
 	}
-}
-
-class SwitchPairs{
-	private Long s1;
-	private Long s2;
-
-	public SwitchPairs(Long s1, Long s2){
-		this.s1 = s1;
-		this.s2 = s2;
-	}
-
 }
