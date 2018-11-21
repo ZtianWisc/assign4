@@ -1,12 +1,14 @@
 package edu.wisc.cs.sdn.apps.l3routing;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
+import edu.wisc.cs.sdn.apps.util.SwitchCommands;
+import org.openflow.protocol.OFMatch;
+import org.openflow.protocol.action.OFAction;
+import org.openflow.protocol.action.OFActionOutput;
+import org.openflow.protocol.instruction.OFInstruction;
+import org.openflow.protocol.instruction.OFInstructionApplyActions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -51,12 +53,14 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
     // Map of hosts to devices
     private Map<IDevice,Host> knownHosts;
 
+    // Map of (h1, h2) to link
+    private Map<SwitchPairs, Link> bestPaths;
+
 	/**
      * Loads dependencies and initializes data structures.
      */
 	@Override
-	public void init(FloodlightModuleContext context)
-			throws FloodlightModuleException 
+	public void init(FloodlightModuleContext context) throws FloodlightModuleException
 	{
 		log.info(String.format("Initializing %s...", MODULE_NAME));
 		Map<String,String> config = context.getConfigParams(this);
@@ -74,8 +78,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
      * Subscribes to events and performs other startup tasks.
      */
 	@Override
-	public void startUp(FloodlightModuleContext context)
-			throws FloodlightModuleException 
+	public void startUp(FloodlightModuleContext context) throws FloodlightModuleException
 	{
 		log.info(String.format("Starting %s...", MODULE_NAME));
 		this.floodlightProv.addOFSwitchListener(this);
@@ -87,6 +90,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 	}
+
 	
     /**
      * Get a list of all known hosts in the network.
@@ -123,7 +127,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
-			
+			this.installRules(host);
 			/*****************************************************************/
 		}
 	}
@@ -139,13 +143,13 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		if (null == host)
 		{ return; }
 		this.knownHosts.remove(device);
-		
+
 		log.info(String.format("Host %s is no longer attached to a switch", 
 				host.getName()));
 		
 		/*********************************************************************/
 		/* TODO: Update routing: remove rules to route to host               */
-		
+		this.uninstallRules(host);
 		/*********************************************************************/
 	}
 
@@ -173,7 +177,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
-		
+		this.uninstallRules(host);
+		this.installRules(host);
 		/*********************************************************************/
 	}
 	
@@ -189,7 +194,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		this.updateShortestPath();
+		this.installRules();
 		/*********************************************************************/
 	}
 
@@ -205,7 +211,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		this.updateShortestPath();
+		this.installRules();
 		/*********************************************************************/
 	}
 
@@ -236,8 +243,115 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		
+		this.updateShortestPath();
+		this.installRules();
 		/*********************************************************************/
+	}
+
+	/** Install rules for all hosts */
+	private void installRules(){
+		Collection<Host> hosts = this.getHosts();
+		Map<Long, IOFSwitch> switches = this.getSwitches();
+		for (Host h1 : hosts){
+			if (!h1.isAttachedToSwitch()) continue;
+			for (Host h2: hosts){
+				if (h1.equals(h2) || !h2.isAttachedToSwitch()) continue;
+				IOFSwitch s1 = h1.getSwitch();
+				IOFSwitch s2 = h2.getSwitch();
+				while (!s1.equals(s2)) {
+					Link link = this.bestPaths.get(new SwitchPairs(s1.getId(), s2.getId()));
+					if (null == link) System.out.println("Link is null");
+					int port = link.getDstPort();
+					this.installRule(s1, h2, port);
+					s1 = switches.get(link.getDst());
+				}
+			}
+		}
+	}
+
+	/** Install rules for one host */
+	private void installRules(Host h1){
+		if (!h1.isAttachedToSwitch()) return;
+		Collection<Host> hosts = this.getHosts();
+		Map<Long, IOFSwitch> switches = this.getSwitches();
+		for (Host h2 : hosts) {
+			if (h1.equals(h2) || !h2.isAttachedToSwitch()) continue;
+			IOFSwitch s1 = h1.getSwitch();
+			IOFSwitch s2 = h2.getSwitch();
+			while (!s1.equals(s2)) {
+				Link link = this.bestPaths.get(new SwitchPairs(s1.getId(), s2.getId()));
+				if (null == link) System.out.println("Link is null");
+				int port = link.getDstPort();
+				this.installRule(s1, h2, port);
+				s1 = switches.get(link.getDst());
+			}
+		}
+	}
+
+	/** Install one rule for a (switch, host) */
+	private void installRule(IOFSwitch s, Host h, int port){
+		OFMatch matchCriteria = new OFMatch();
+		matchCriteria.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+		matchCriteria.setNetworkDestination(h.getIPv4Address());
+		OFAction action = new OFActionOutput(port);
+		List<OFAction> acts = new ArrayList<OFAction>();
+		acts.add(action);
+		OFInstruction instruction = new OFInstructionApplyActions(acts);
+		List<OFInstruction> ins = new ArrayList<OFInstruction>();
+		ins.add(instruction);
+		SwitchCommands.installRule(s, this.table, SwitchCommands.DEFAULT_PRIORITY, matchCriteria, ins);
+	}
+
+	/** Remove rules for one host for all switches */
+	private void uninstallRules(Host h){
+		Map<Long, IOFSwitch> switches = this.getSwitches();
+		for (IOFSwitch s : switches.values()){
+			this.uninstallRule(s, h);
+		}
+	}
+
+	/** Remove one rule for a (switch, host) */
+	private void uninstallRule(IOFSwitch s, Host h){
+		OFMatch matchCriteria = new OFMatch();
+		matchCriteria.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+		matchCriteria.setNetworkDestination(h.getIPv4Address());
+		SwitchCommands.removeRules(s, this.table, matchCriteria);
+	}
+
+	/** Update bestRoutes and bestPaths
+	 *  using Floyd-Warshall algorithm */
+	private void updateShortestPath(){
+		Map<SwitchPairs, Integer> bestRoutes = new HashMap<SwitchPairs, Integer>();
+		Map<SwitchPairs, Link> bestPaths = new HashMap<SwitchPairs, Link>();
+		Set<Long> switches = this.getSwitches().keySet();
+		for (Long i : switches){
+			for (Long j : switches){
+				bestRoutes.put(new SwitchPairs(i, j), Integer.MAX_VALUE);
+				bestPaths.put(new SwitchPairs(i, j), null);
+			}
+		}
+		for (Link link : this.getLinks()){
+			bestRoutes.put(new SwitchPairs(link.getSrc(), link.getDst()), 1);
+			bestRoutes.put(new SwitchPairs(link.getDst(), link.getSrc()), 1);
+			bestPaths.put(new SwitchPairs(link.getSrc(), link.getDst()), link);
+			bestPaths.put(new SwitchPairs(link.getDst(), link.getSrc()), link);
+		}
+		for (Long s : switches){
+			bestRoutes.put(new SwitchPairs(s, s), 0);
+		}
+
+		for (Long k : switches){
+			for (Long i : switches){
+				for (Long j : switches){
+					SwitchPairs ij = new SwitchPairs(i, j), ik = new SwitchPairs(i, k), kj = new SwitchPairs(k, j);
+					if (bestRoutes.get(ij) > bestRoutes.get(ik) + bestRoutes.get(kj)){
+						bestRoutes.put(ij, bestRoutes.get(ik) + bestRoutes.get(kj));
+						bestPaths.put(ij, bestPaths.get(ik));
+					}
+				}
+			}
+		}
+		this.bestPaths = bestPaths;
 	}
 
 	/**
@@ -279,7 +393,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	@Override
 	public void switchChanged(long switchId) 
 	{ /* Nothing we need to do */ }
-	
+
 	/**
 	 * Event handler called when a port on a switch goes up or down, or is
 	 * added or removed.
@@ -345,4 +459,15 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
         floodlightService.add(IDeviceService.class);
         return floodlightService;
 	}
+}
+
+class SwitchPairs{
+	private Long s1;
+	private Long s2;
+
+	public SwitchPairs(Long s1, Long s2){
+		this.s1 = s1;
+		this.s2 = s2;
+	}
+
 }
