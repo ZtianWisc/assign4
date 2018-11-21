@@ -359,7 +359,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		for (Long k : switches){
 			for (Long i : switches){
 				for (Long j : switches){
-					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
+					if (bestRoutes.get(i).get(j) < bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
 						bestRoutes.get(i).put(j, bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j));
 						bestPaths.get(i).put(j, bestPaths.get(i).get(k));
 					}
