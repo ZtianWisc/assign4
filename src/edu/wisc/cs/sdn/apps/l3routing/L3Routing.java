@@ -256,8 +256,10 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		Map<Long, IOFSwitch> switches = this.getSwitches();
 		for (Host h1 : hosts){
 			if (!h1.isAttachedToSwitch()) continue;
+			this.installRule(h1.getSwitch(), h1, h1.getPort());
 			for (Host h2: hosts){
 				if (h1.equals(h2) || !h2.isAttachedToSwitch()) continue;
+				this.installRule(h2.getSwitch(), h2, h2.getPort());
 				IOFSwitch s1 = h1.getSwitch();
 				IOFSwitch s2 = h2.getSwitch();
 				while (!s1.equals(s2)) {
@@ -277,10 +279,12 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/** Install rules for one host */
 	private void installRules(Host h1){
 		if (!h1.isAttachedToSwitch()) return;
+		this.installRule(h1.getSwitch(), h1, h1.getPort());
 		Collection<Host> hosts = this.getHosts();
 		Map<Long, IOFSwitch> switches = this.getSwitches();
 		for (Host h2 : hosts) {
 			if (h1.equals(h2) || !h2.isAttachedToSwitch()) continue;
+			this.installRule(h2.getSwitch(), h2, h2.getPort());
 			IOFSwitch s1 = h1.getSwitch();
 			IOFSwitch s2 = h2.getSwitch();
 			while (!s1.equals(s2)) {
