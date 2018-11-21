@@ -321,8 +321,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/** Update bestRoutes and bestPaths
 	 *  using Floyd-Warshall algorithm */
 	private void updateShortestPath(){
-		Map<SwitchPairs, Integer> bestRoutes = new HashMap<SwitchPairs, Integer>();
-		Map<SwitchPairs, Link> bestPaths = new HashMap<SwitchPairs, Link>();
+		Map<SwitchPairs, Integer> bestRoutes = new ConcurrentHashMap<SwitchPairs, Integer>();
+		Map<SwitchPairs, Link> bestPaths = new ConcurrentHashMap<SwitchPairs, Link>();
 		Set<Long> switches = this.getSwitches().keySet();
 		for (Long i : switches){
 			for (Long j : switches){
