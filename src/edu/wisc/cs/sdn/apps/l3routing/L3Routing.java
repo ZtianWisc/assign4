@@ -173,6 +173,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
+		this.uninstallRules(host);
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -189,7 +190,6 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -237,6 +237,9 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
+		for (Host h : this.getHosts()){
+			this.uninstallRules(h);
+		}
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -268,7 +271,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		}
 	}
 
-	/** Install rules for one host
+	/** Install rules for one host, to be used when host is added or moved.
 	private void installRules(Host h1){
 		if (!h1.isAttachedToSwitch()) return;
 		this.installRule(h1.getSwitch(), h1, h1.getPort());
@@ -325,12 +328,12 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/** Update bestRoutes and bestPaths
 	 *  using Floyd-Warshall algorithm */
 	private Map<Long, Map<Long, Link>> updateShortestPath(){
-		Map<Long, Map<Long, Integer>> bestDists = new ConcurrentHashMap<Long, Map<Long, Integer>>();
-		Map<Long, Map<Long, Link>> bestRoutes = new ConcurrentHashMap<Long, Map<Long, Link>>();
+		Map<Long, Map<Long, Integer>> bestDists = new HashMap<Long, Map<Long, Integer>>();
+		Map<Long, Map<Long, Link>> bestRoutes = new HashMap<Long, Map<Long, Link>>();
 		Set<Long> switches = this.getSwitches().keySet();
 		for (Long i : switches){
-			Map<Long, Link> linkMap = new ConcurrentHashMap<Long, Link>();
-			Map<Long, Integer> distMap = new ConcurrentHashMap<Long, Integer>();
+			Map<Long, Link> linkMap = new HashMap<Long, Link>();
+			Map<Long, Integer> distMap = new HashMap<Long, Integer>();
 			for (Long j : switches){
 				if (i.equals(j)){
 					distMap.put(j, 0);
