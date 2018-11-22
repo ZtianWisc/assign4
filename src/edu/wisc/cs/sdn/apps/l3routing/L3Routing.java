@@ -343,7 +343,6 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				} else {
 					distMap.put(j, Integer.MAX_VALUE/2-1);
 				}
-				linkMap.put(j, null);
 			}
 			bestRoutes.put(i, distMap);
 			bestPaths.put(i, linkMap);
@@ -360,7 +359,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		for (Long k : switches){
 			for (Long i : switches){
 				for (Long j : switches){
-					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
+					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j))
+					{
 						bestRoutes.get(i).put(j, bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j));
 						bestPaths.get(i).put(j, bestPaths.get(i).get(k));
 					}
@@ -372,11 +372,13 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	}
 
 	private void printBestPath(){
+		System.out.println("-------------------------------------------");
 	    for (Long src : this.bestPaths.keySet()){
 	        for (Long dst : this.bestPaths.get(src).keySet()){
 	            System.out.println(String.format("s%s -> s%s : %s", src, dst, this.bestPaths.get(src).get(dst)));
             }
         }
+		System.out.println("-------------------------------------------");
     }
 
 	/**
