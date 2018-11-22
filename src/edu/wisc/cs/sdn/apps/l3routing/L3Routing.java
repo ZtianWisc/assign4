@@ -341,8 +341,9 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				if (i.equals(j)){
 					distMap.put(j, 0);
 				} else {
-					distMap.put(j, Integer.MAX_VALUE);
+					distMap.put(j, Integer.MAX_VALUE/2-1);
 				}
+				linkMap.put(j, null);
 			}
 			bestRoutes.put(i, distMap);
 			bestPaths.put(i, linkMap);
@@ -359,13 +360,14 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		for (Long k : switches){
 			for (Long i : switches){
 				for (Long j : switches){
-					if (bestRoutes.get(i).get(j) < bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
+					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j)){
 						bestRoutes.get(i).put(j, bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j));
 						bestPaths.get(i).put(j, bestPaths.get(i).get(k));
 					}
 				}
 			}
 		}
+
 		this.bestPaths = bestPaths;
 	}
 
