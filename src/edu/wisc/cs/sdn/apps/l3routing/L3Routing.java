@@ -367,9 +367,17 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				}
 			}
 		}
-
 		this.bestPaths = bestPaths;
+		printBestPath();
 	}
+
+	private void printBestPath(){
+	    for (Long src : this.bestPaths.keySet()){
+	        for (Long dst : this.bestPaths.get(src).keySet()){
+	            System.out.println(String.format("s%s -> s%s : %s", src, dst, this.bestPaths.get(src).get(dst)));
+            }
+        }
+    }
 
 	/**
 	 * Event handler called when link goes up or down.
