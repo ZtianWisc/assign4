@@ -127,7 +127,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
-			this.installRules(host);
+			this.installRules();
 			/*****************************************************************/
 		}
 	}
@@ -177,8 +177,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
-		this.uninstallRules(host);
-		this.installRules(host);
+		this.installRules();
 		/*********************************************************************/
 	}
 	
@@ -309,7 +308,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		OFInstruction instruction = new OFInstructionApplyActions(acts);
 		List<OFInstruction> ins = new ArrayList<OFInstruction>();
 		ins.add(instruction);
-		SwitchCommands.installRule(s, this.table, SwitchCommands.DEFAULT_PRIORITY, matchCriteria, ins);
+		SwitchCommands.installRule(s, table, SwitchCommands.DEFAULT_PRIORITY, matchCriteria, ins);
 	}
 
 	/** Remove rules for one host for all switches */
@@ -325,7 +324,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		OFMatch matchCriteria = new OFMatch();
 		matchCriteria.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
 		matchCriteria.setNetworkDestination(h.getIPv4Address());
-		SwitchCommands.removeRules(s, this.table, matchCriteria);
+		SwitchCommands.removeRules(s, table, matchCriteria);
 	}
 
 	/** Update bestRoutes and bestPaths
