@@ -193,8 +193,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.bestPaths = this.updateShortestPath();
-		this.installRules();
+
+		this.updateShortestPath();
 		/*********************************************************************/
 	}
 
@@ -210,8 +210,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.bestPaths = this.updateShortestPath();
-		this.installRules();
+		this.updateShortestPath();
 		/*********************************************************************/
 	}
 
@@ -242,8 +241,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.bestPaths = this.updateShortestPath();
-		this.installRules();
+		this.updateShortestPath();
 		/*********************************************************************/
 	}
 
@@ -330,8 +328,8 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 	/** Update bestRoutes and bestPaths
 	 *  using Floyd-Warshall algorithm */
 	private Map<Long, Map<Long, Link>> updateShortestPath(){
-		Map<Long, Map<Long, Integer>> bestRoutes = new ConcurrentHashMap<Long, Map<Long, Integer>>();
-		Map<Long, Map<Long, Link>> bestPaths = new ConcurrentHashMap<Long, Map<Long, Link>>();
+		Map<Long, Map<Long, Integer>> bestDists = new ConcurrentHashMap<Long, Map<Long, Integer>>();
+		this.bestPaths = new ConcurrentHashMap<Long, Map<Long, Link>>();
 		Set<Long> switches = this.getSwitches().keySet();
 		for (Long i : switches){
 			Map<Long, Link> linkMap = new ConcurrentHashMap<Long, Link>();
@@ -340,43 +338,44 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				if (i.equals(j)){
 					distMap.put(j, 0);
 				} else {
-					distMap.put(j, Integer.MAX_VALUE/2-1);
+					distMap.put(j, 10000); // assume we won't have more than 10000 switches
 				}
 			}
-			bestRoutes.put(i, distMap);
-			bestPaths.put(i, linkMap);
+			bestDists.put(i, distMap);
+			this.bestPaths.put(i, linkMap);
 		}
 		for (Link link : this.getLinks()){
 			Long src = link.getSrc();
 			Long dst = link.getDst();
-			bestRoutes.get(src).put(dst, 1);
-			bestRoutes.get(dst).put(src, 1);
-			bestPaths.get(src).put(dst, link);
-			bestPaths.get(dst).put(src, link);
+			bestDists.get(src).put(dst, 1);
+			bestDists.get(dst).put(src, 1);
+			this.bestPaths.get(src).put(dst, link);
+			this.bestPaths.get(dst).put(src, link);
 		}
 
 		for (Long k : switches){
 			for (Long i : switches){
 				for (Long j : switches){
-					if (bestRoutes.get(i).get(j) > bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j))
+					if (bestDists.get(i).get(j) > bestDists.get(i).get(k) + bestDists.get(k).get(j))
 					{
-						bestRoutes.get(i).put(j, bestRoutes.get(i).get(k) + bestRoutes.get(k).get(j));
-						bestPaths.get(i).put(j, bestPaths.get(i).get(k));
+						bestDists.get(i).put(j, bestDists.get(i).get(k) + bestDists.get(k).get(j));
+						this.bestPaths.get(i).put(j, this.bestPaths.get(i).get(k));
 					}
 				}
 			}
 		}
 		printBestPath();
+		this.installRules();
 	}
 
 	private void printBestPath(){
-		System.out.println("-------------------------------------------");
+		System.out.println("-----------------------------Path table start-----------------------------------");
 	    for (Long src : this.bestPaths.keySet()){
 	        for (Long dst : this.bestPaths.get(src).keySet()){
 	            System.out.println(String.format("s%s -> s%s : %s", src, dst, this.bestPaths.get(src).get(dst)));
             }
         }
-		System.out.println("-------------------------------------------");
+		System.out.println("-----------------------------Path table end-------------------------------------");
     }
 
 	/**
