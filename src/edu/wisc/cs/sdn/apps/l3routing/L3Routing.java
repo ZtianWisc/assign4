@@ -193,7 +193,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.updateShortestPath();
+		this.bestPaths = this.updateShortestPath();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -210,7 +210,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.updateShortestPath();
+		this.bestPaths = this.updateShortestPath();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -242,7 +242,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		this.updateShortestPath();
+		this.bestPaths = this.updateShortestPath();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -329,7 +329,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 
 	/** Update bestRoutes and bestPaths
 	 *  using Floyd-Warshall algorithm */
-	private void updateShortestPath(){
+	private Map<Long, Map<Long, Link>> updateShortestPath(){
 		Map<Long, Map<Long, Integer>> bestRoutes = new ConcurrentHashMap<Long, Map<Long, Integer>>();
 		Map<Long, Map<Long, Link>> bestPaths = new ConcurrentHashMap<Long, Map<Long, Link>>();
 		Set<Long> switches = this.getSwitches().keySet();
@@ -366,7 +366,6 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				}
 			}
 		}
-		this.bestPaths = bestPaths;
 		printBestPath();
 	}
 
