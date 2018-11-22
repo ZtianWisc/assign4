@@ -261,7 +261,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 					Link link = this.bestPaths.get(s1.getId()).get(s2.getId());
 					if (null == link) {
 						System.out.println("Link is null");
-						continue;
+						break;
 					}
 					int port = link.getSrcPort();
 					this.installRule(s1, h2, port);
