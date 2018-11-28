@@ -297,16 +297,13 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 
 	/** Install one rule for a (switch, host) */
 	private void installRule(IOFSwitch s, Host h, int port){
-		OFMatch matchCriteria = new OFMatch();
-		matchCriteria.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
-		matchCriteria.setNetworkDestination(h.getIPv4Address());
+		if (!h.isAttachedToSwitch()) { return; }
+		OFMatch match = new OFMatch();
+		match.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+		match.setNetworkDestination(h.getIPv4Address());
 		OFAction action = new OFActionOutput(port);
-		List<OFAction> acts = new ArrayList<OFAction>();
-		acts.add(action);
-		OFInstruction instruction = new OFInstructionApplyActions(acts);
-		List<OFInstruction> ins = new ArrayList<OFInstruction>();
-		ins.add(instruction);
-		SwitchCommands.installRule(s, table, SwitchCommands.DEFAULT_PRIORITY, matchCriteria, ins);
+		OFInstruction ins = new OFInstructionApplyActions(Arrays.asList(action));
+		SwitchCommands.installRule(s, this.table, SwitchCommands.DEFAULT_PRIORITY, match, Arrays.asList(ins));
 	}
 
 	/** Remove rules for one host for all switches */
@@ -319,10 +316,10 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 
 	/** Remove one rule for a (switch, host) */
 	private void uninstallRule(IOFSwitch s, Host h){
-		OFMatch matchCriteria = new OFMatch();
-		matchCriteria.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
-		matchCriteria.setNetworkDestination(h.getIPv4Address());
-		SwitchCommands.removeRules(s, table, matchCriteria);
+		OFMatch match = new OFMatch();
+		match.setDataLayerType(OFMatch.ETH_TYPE_IPV4);
+		match.setNetworkDestination(h.getIPv4Address());
+		SwitchCommands.removeRules(s, this.table, match);
 	}
 
 	/** Update bestRoutes and bestPaths
