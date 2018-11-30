@@ -353,9 +353,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			Long src = link.getSrc();
 			Long dst = link.getDst();
 			bestDists.get(src).put(dst, 1);
-			bestDists.get(dst).put(src, 1);
 			bestRoutes.get(src).put(dst, link);
-			bestRoutes.get(dst).put(src, link);
 		}
 
 		for (Long k : switches){
