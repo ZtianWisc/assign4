@@ -123,6 +123,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 			
 			/*****************************************************************/
 			/* TODO: Update routing: add rules to route to new host          */
+			this.unistallAllRules();
 			this.installRules();
 			/*****************************************************************/
 		}
@@ -173,7 +174,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change rules to route to host               */
-		this.uninstallRules(host);
+		this.unistallAllRules();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -190,6 +191,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
+		this.unistallAllRules();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -206,6 +208,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
+		this.unistallAllRules();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -237,9 +240,7 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		
 		/*********************************************************************/
 		/* TODO: Update routing: change routing rules for all hosts          */
-		for (Host h : this.getHosts()){
-			this.uninstallRules(h);
-		}
+		this.unistallAllRules();
 		this.installRules();
 		/*********************************************************************/
 	}
@@ -304,6 +305,13 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 		OFAction action = new OFActionOutput(port);
 		OFInstruction ins = new OFInstructionApplyActions(Arrays.asList(action));
 		SwitchCommands.installRule(s, this.table, SwitchCommands.DEFAULT_PRIORITY, match, Arrays.asList(ins));
+	}
+
+	/** Uninstall rules on all switches */
+	private void unistallAllRules(){
+		for (Host h : this.getHosts()){
+			this.uninstallRules(h);
+		}
 	}
 
 	/** Remove rules for one host for all switches */
