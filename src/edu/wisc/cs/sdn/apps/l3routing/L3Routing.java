@@ -258,15 +258,15 @@ public class L3Routing implements IFloodlightModule, IOFSwitchListener,
 				this.installRule(h2.getSwitch(), h2, h2.getPort());
 				IOFSwitch s1 = h1.getSwitch();
 				IOFSwitch s2 = h2.getSwitch();
-				while (!s1.equals(s2)) {
-					Link link = bestRoutes.get(s1.getId()).get(s2.getId());
+				while (!s2.equals(s1)) {
+					Link link = bestRoutes.get(s2.getId()).get(s1.getId());
 					if (null == link) {
-						System.out.println("Link is null");
+						System.out.println("Graph is not connected");
 						break;
 					}
 					int port = link.getSrcPort();
-					this.installRule(s1, h2, port);
-					s1 = switches.get(link.getDst());
+					this.installRule(s2, h1, port);
+					s2 = switches.get(link.getDst());
 				}
 			}
 		}
